@@ -1,0 +1,29 @@
+# Pronunciation overrides for Piper TTS, applied to Home Assistant Assist responses.
+# Format: written_form,spoken_form (no header, one entry per line).
+# Comments (#) and blank lines ignored. Longest entries applied first.
+# Editable without restart — the file is re-read on every TTS request.
+
+# --- SI unit symbols Piper reads as raw characters ---
+1 μg/m³,1 microgram per cubic meter
+1 µg/m³,1 microgram per cubic meter
+μg/m³, micrograms per cubic meter
+µg/m³, micrograms per cubic meter
+°C, degrees Celsius
+°F, degrees Fahrenheit
+m³, cubic meters
+m², square meters
+km/h, kilometers per hour
+mg/L, milligrams per liter
+
+# --- Words Piper mispronounces ---
+# (None yet — "cubic" sounded like "Kubrick" but the phonetic respellings
+# tried so far sounded worse than the original. Leaving as-is.)
+
+# --- Names / personalizations ---
+# (Add your household names here. Format: NameAsTyped,phonetic-spelling)
+# Example below — leave or remove to taste.
+Kailey,Kaylee
+kailey,Kaylee
+
+# --- Acronyms that Piper spells out instead of saying as a word ---
+# Add as you notice them via the round-trip diagnostic.

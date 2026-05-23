@@ -1,0 +1,22 @@
+services:
+  wyoming-piper-preproc:
+    build: .
+    image: wyoming-piper-preproc:local
+    container_name: wyoming-piper-preproc
+    restart: unless-stopped
+    ports:
+      - "10210:10210"
+    environment:
+      # Point at the real Piper Wyoming endpoint.
+      - UPSTREAM_HOST=${UPSTREAM_HOST:-host.docker.internal}
+      - UPSTREAM_PORT=${UPSTREAM_PORT:-10200}
+      # CSVs are read at every Synthesize event — edit on the host without restarts.
+      - PRONUNCIATIONS=/data/pronunciations.csv:/data/pronunciations-piper.csv
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount your data dir here. The container ships a default
+      # pronunciations-piper.csv that survives if you don't mount over it.
+      - ./data:/data:ro
+    # On Linux, host.docker.internal needs an explicit host-gateway alias.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
