@@ -17,7 +17,7 @@ Every event passes through unchanged **except** `Synthesize`, whose `text` field
 ## Quick start
 
 ```bash
-git clone https://github.com/<you>/wyoming-piper-preproc.git
+git clone https://github.com/kaibae19/wyoming-piper-preproc.git
 cd wyoming-piper-preproc
 
 # Edit data/pronunciations-piper.csv to taste
@@ -91,4 +91,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Acknowledgements
 
-The text-preprocessing pipeline pattern (normalize → pronunciations → engine-punctuation, all engine-aware) is borrowed from the TTS preprocessor in the [VE-Analysis-API](https://github.com/) project. Same idea — substitute then synthesize — applied to a different host.
+The text-preprocessing pipeline pattern (normalize → pronunciations → engine-punctuation, all engine-aware) is borrowed from the TTS preprocessor in the VE-Analysis-API project (private). Same idea — substitute then synthesize — applied to a different host.
