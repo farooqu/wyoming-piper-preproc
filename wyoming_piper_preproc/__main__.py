@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from wyoming.event import Event, async_read_event, async_write_event
+from wyoming.info import Info
 from wyoming.tts import Synthesize, SynthesizeChunk, SynthesizeStart, SynthesizeStop
 
 from .preproc import TextPreprocessor
@@ -24,8 +25,9 @@ async def _forward(
     default_voice: str | None,
     ignore_case: bool,
     config_path: Path | None,
+    program_name: str,
 ) -> None:
-    """Keep original events/data/payload; change only synthesis text/default voice."""
+    """Rewrite synthesis text/default voice downstream and TTS program names upstream."""
     stream: TextPreprocessor | None = None
 
     def begin(event: Event) -> TextPreprocessor:
@@ -61,6 +63,13 @@ async def _forward(
                     }
                 # A Synthesize inside a stream is the protocol's compatibility
                 # aggregate. Streaming Piper ignores it: leave it entirely alone.
+            elif Info.is_type(event.type) and "tts" in event.data:
+                # Avoid deserializing/reserializing Info: retain unknown fields,
+                # voice identifiers, capabilities, and the original payload.
+                event.data = {
+                    **event.data,
+                    "tts": [{**program, "name": program_name} for program in event.data["tts"]],
+                }
             await async_write_event(event, dst_writer)
     except (ConnectionResetError, BrokenPipeError):
         return
@@ -78,6 +87,7 @@ async def _handle_client(
     default_voice: str | None,
     ignore_case: bool,
     config_path: Path | None,
+    program_name: str,
 ) -> None:
     peer = writer.get_extra_info("peername")
     _LOG.debug("client connected: %s", peer)
@@ -92,7 +102,7 @@ async def _handle_client(
         return
 
     tasks = [asyncio.create_task(_forward(
-        src, dst, intercept, csv_paths, voice_paths, default_voice, ignore_case, config_path,
+        src, dst, intercept, csv_paths, voice_paths, default_voice, ignore_case, config_path, program_name,
     )) for src, dst, intercept in (
         (reader, up_writer, True), (up_reader, writer, False),
     )]
@@ -117,7 +127,7 @@ async def _amain(args: argparse.Namespace) -> None:
     server = await asyncio.start_server(
         lambda r, w: _handle_client(
             r, w, args.upstream_host, args.upstream_port, csv_paths,
-            voice_paths, args.default_voice, args.ignore_case, args.config,
+            voice_paths, args.default_voice, args.ignore_case, args.config, args.name,
         ),
         host=args.host,
         port=args.port,
@@ -141,6 +151,7 @@ def _voice_pronunciation(value: str) -> tuple[str, Path]:
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="wyoming-piper-preproc")
+    p.add_argument("--name", default="Piper Preprocessed", help="TTS program name advertised to clients")
     p.add_argument("--host", default=os.environ.get("LISTEN_HOST", "0.0.0.0"))
     p.add_argument("--port", type=int, default=int(os.environ.get("LISTEN_PORT", "10210")))
     p.add_argument("--upstream-host", default=os.environ.get("UPSTREAM_HOST", "127.0.0.1"))

@@ -12,7 +12,7 @@ HA  ◀────audio chunks─────         │             ◀──
                                (mappings)
 ```
 
-Only synthesis text is rewritten, plus an optional default voice on requests that omit it. Unknown fields, context, speaker selection, payloads, non-text events, and upstream audio/metadata are preserved. One inbound TCP connection ↔ one upstream connection; multiple utterances on a connection are supported. Speech text is not logged, including at INFO.
+Synthesis text is rewritten, plus an optional default voice on requests that omit it. Discovery advertises the TTS program as `Piper Preprocessed` by default (configurable with `--name`). Voice names/IDs, unknown fields, context, speaker selection, payloads, other events, and upstream audio/metadata are preserved. One inbound TCP connection ↔ one upstream connection; multiple utterances on a connection are supported. Speech text is not logged, including at INFO.
 
 ## Quick start
 
@@ -82,6 +82,11 @@ python -m wyoming_piper_preproc \
 
 - `--config PATH`: load one JSON document containing shared and per-voice maps.
   This replaces both CSV options; CSV files are not loaded when it is supplied.
+- `--name NAME`: advertise this TTS program name in discovery responses; defaults
+  to `Piper Preprocessed`. For example, `--name "Piper Personalized"` sets a local
+  display name without changing voice names/IDs or capabilities. Home Assistant
+  may need its Wyoming integration reloaded to pick up the name; existing manual
+  entity-name overrides are not changed by this option.
 - `--ignore-case`: optional Unicode case-insensitive key matching (Python
   `re.IGNORECASE`); the default is case-sensitive. Replacement case is preserved.
 - `--voice-pronunciations VOICE=PATH`: repeatable; only files for the selected

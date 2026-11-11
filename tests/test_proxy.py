@@ -13,6 +13,7 @@ from wyoming.event import Event, async_read_event, async_write_event
 
 class ProxyTests(unittest.IsolatedAsyncioTestCase):
     use_json = False
+    program_name = None
 
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -34,6 +35,11 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
             Event("audio-chunk", {"rate": 22050, "width": 2, "channels": 1, "timestamp": 42}, b"\x00\xff\x80\x01"),
             Event("audio-stop", {"timestamp": 43, "extra": [1, 2]}),
         ]
+        self.info = Event("info", {
+            "tts": [{"name": "Piper", "custom": True, "supports_synthesize_streaming": True,
+                     "voices": [{"name": "en_US-lessac-medium", "description": "Lessac", "speakers": ["0"]}]}],
+            "asr": [{"name": "unrelated"}], "future": {"kept": True},
+        }, b"info-payload")
         self.server = await asyncio.start_server(self.fake_piper, "127.0.0.1", 0)
         port = self.server.sockets[0].getsockname()[1]
         mapping_args = [
@@ -55,6 +61,8 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
                            "en_US-hfc_male-medium": voice_rules, "other": {"Umer": "OTHER"}},
             }), encoding="utf-8")
             mapping_args = ["--config", str(self.config)]
+        if self.program_name is not None:
+            mapping_args += ["--name", self.program_name]
         self.process = await asyncio.create_subprocess_exec(
             sys.executable, "-m", "wyoming_piper_preproc", "--host", "127.0.0.1", "--port", "0",
             "--upstream-host", "127.0.0.1", "--upstream-port", str(port),
@@ -107,7 +115,7 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
             while (event := await async_read_event(reader)) is not None:
                 await self.events.put(event)
                 if event.type == "describe":
-                    await async_write_event(Event("info", {"tts": [{"name": "Piper", "custom": True}]}), writer)
+                    await async_write_event(self.info, writer)
                 elif event.type == "audio-now":
                     for audio in self.audio:
                         await async_write_event(audio, writer)
@@ -166,12 +174,18 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(await self.received(), Event("synthesize", {**original.data, "text": text}))
                 await self.response()
 
-    async def test_describe_unknown_and_nontext_events_are_transparent(self):
+    async def test_discovery_name_preserves_voices_capabilities_and_other_events(self):
         events = [Event("describe", {"custom": "Umie"}), Event("custom", {"text": "Umie", "voice": {"name": "x"}}, b"\xff")]
         await self.send(*events)
         for event in events:
             self.assertEqual(await self.received(), event)
-        self.assertEqual(await asyncio.wait_for(async_read_event(self.reader), 5), Event("info", {"tts": [{"name": "Piper", "custom": True}]}))
+        expected = Event("info", {
+            "tts": [{"name": self.program_name or "Piper Preprocessed", "custom": True,
+                     "supports_synthesize_streaming": True,
+                     "voices": [{"name": "en_US-lessac-medium", "description": "Lessac", "speakers": ["0"]}]}],
+            "asr": [{"name": "unrelated"}], "future": {"kept": True},
+        }, b"info-payload")
+        self.assertEqual(await asyncio.wait_for(async_read_event(self.reader), 5), expected)
 
     async def run_stream(self, text, chunks, voice=None):
         data = {"context": {"session": "stream"}, "future": {"x": 1}}
@@ -262,6 +276,7 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
 
 class JsonProxyTests(ProxyTests):
     use_json = True
+    program_name = "Piper Personalized"
 
 
 if __name__ == "__main__":
