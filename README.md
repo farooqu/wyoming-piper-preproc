@@ -17,7 +17,7 @@ Synthesis text is rewritten, plus an optional default voice on requests that omi
 ## Quick start
 
 ```bash
-git clone https://github.com/farooqu/wyoming-piper-preproc.git
+git clone https://github.com/kaibae19/wyoming-piper-preproc.git
 cd wyoming-piper-preproc
 
 # Edit data/pronunciations-piper.csv to taste
@@ -33,22 +33,26 @@ docker compose up -d --build
 GitHub Actions runs the regression tests, then builds the Dockerfile for
 `linux/amd64` and `linux/arm64`. Pull requests build without publishing or
 logging in to the registry. Pushes to `main` publish to
-`ghcr.io/farooqu/wyoming-piper-preproc` with `latest` and
+`ghcr.io/<owner>/<repository>` with `latest` and
 `sha-<full-commit-SHA>` tags. Pushing a version tag such as `v1.2.3` publishes
 that image tag and its SHA tag without moving `latest`. The workflow can also
 be run manually; only runs on `main` update `latest`.
 
+The image namespace comes from `github.repository`, not a hard-coded account.
+For this repository it is `ghcr.io/kaibae19/wyoming-piper-preproc`; forks publish
+under their own owner and repository name.
+
 Publishing uses the repository's `GITHUB_TOKEN` with `packages: write`; no
 separate registry secret is required. GitHub Actions must be enabled for the
-fork. To allow pulls without authentication, set the GHCR package's visibility
+repository. To allow pulls without authentication, set the GHCR package's visibility
 to public after its first publication.
 
-To use the published image instead of building locally:
+After the repository's first publication, use its image instead of building locally:
 
 ```bash
 docker run --rm --network host \
   -v "$PWD/pronunciations.json:/data/pronunciations.json:ro" \
-  ghcr.io/farooqu/wyoming-piper-preproc:latest \
+  ghcr.io/kaibae19/wyoming-piper-preproc:latest \
   --host 127.0.0.1 --port 10210 \
   --upstream-host 127.0.0.1 --upstream-port 10200 \
   --config /data/pronunciations.json \
@@ -127,6 +131,22 @@ unlisted voices receive shared rules only. Invalid/unreadable JSON fails startup
 an invalid update closes the affected connection rather than using partial rules.
 Update the file atomically. The example deliberately reuses one pronunciation
 for two voices; phonemes should be evaluated separately for each voice.
+
+### Authoring phoneme overrides
+
+With [eSpeak NG](https://github.com/espeak-ng/espeak-ng) installed, generate an
+IPA starting point for an English pronunciation:
+
+```bash
+espeak-ng -v en-us --ipa=3 -q 'example'
+```
+
+Choose the language that matches your Piper voice, wrap the phonemes in
+`[[ ... ]]`, and add the replacement to that voice's map. Listen to the result
+with the target Piper voice: eSpeak NG output is a starting point, not a
+guarantee of the model's pronunciation. Put a rule in `shared` only when it is
+appropriate for every voice using the proxy. These are text-time overrides;
+they do not modify the Piper model or add model-level pronunciation dictionaries.
 
 ## Legacy pronunciation CSV format
 
